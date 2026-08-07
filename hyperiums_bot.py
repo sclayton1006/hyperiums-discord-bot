@@ -108,51 +108,38 @@ def clean_mirc_tags_to_ansi(text: str) -> str:
 @bot.command(name="r")
 async def rank_check(ctx, *players: str):
     """
-    Queries hyp-legacy API for live player rank stats.
-    Supports single or multiple player lookups.
-    Usage: 
-      !r shamp
-      !r player1 player2 player3
+    Queries hyp-legacy API for player rank stats.
+    Supports multi-player arguments: !r shamp fifi
     """
     if not players:
-        await ctx.send("⚠️ Please specify at least one player name: `!r <player1> [player2] ...`")
+        await ctx.send("⚠️ Please specify at least one player name: !r <player1> [player2] ...")
         return
 
-    results = []
+    # Pass all captured player arguments into the URI
+    # Option A: Single request if passing as separate query args (e.g. arg1=shamp&arg2=fifi)
+    query_args = "&".join([f"arg{i+1}={urllib.parse.quote(p.strip())}" for i, p in enumerate(players)])
+    url = f"https://www.hyp-legacy.com/data/hypbot/get.php?command=rank&{query_args}&source={BOT_SOURCE_TAG}&game={GAME_NAME}"
 
     try:
         session = requests.Session()
         session.mount('https://', LegacySSLAdapter())
         session.mount('http://', LegacySSLAdapter())
 
-        for target_player in players:
-            player_clean = target_player.strip()
-            encoded_player = urllib.parse.quote(player_clean)
+        response = session.get(url, timeout=10, verify=False)
+        if response.status_code != 200:
+            await ctx.send(f"❌ Error reaching hyp-legacy API (HTTP {response.status_code}).")
+            return
 
-            url = (
-                f"https://www.hyp-legacy.com/data/hypbot/get.php"
-                f"?command=rank&arg1={encoded_player}&source={BOT_SOURCE_TAG}&game={GAME_NAME}"
-            )
+        raw_data = response.text.strip()
+        if not raw_data or "not found" in raw_data.lower():
+            await ctx.send(f"❌ Player(s) not found.")
+            return
 
-            response = session.get(url, timeout=10, verify=False)
-
-            if response.status_code != 200:
-                results.append(f"❌ Error fetching {player_clean} (HTTP {response.status_code}).")
-                continue
-
-            raw_data = response.text.strip()
-
-            if not raw_data or "not found" in raw_data.lower():
-                results.append(f"❌ Player matching {player_clean} was not found.")
-                continue
-
-            # Clean mIRC tags to ANSI escape sequences
-            formatted_line = clean_mirc_tags_to_ansi(raw_data)
-            results.append(formatted_line)
-
-        # Join all player results and output in a single ANSI code block
-        combined_output = "\n".join(results)
-        await ctx.send(f"```ansi\n{combined_output}\n```")
+        # Parse the raw multiline response into Discord ANSI formatting
+        formatted_msg = clean_mirc_tags_to_ansi(raw_data)
+        
+        # Output inside an ANSI code block wrapper
+        await ctx.send(f"```ansi\n{formatted_msg}\n```")
 
     except Exception as e:
         await ctx.send(f"⚠️ Error fetching rank data: {e}")
