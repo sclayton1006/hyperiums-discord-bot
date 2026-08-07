@@ -1,0 +1,9 @@
+# Ignore everything by default
+*
+
+# Allow directories so Git can traverse
+!*/
+
+# Explicitly track your Python bot script
+!hyperiums_bot.py
+!.gitignore
