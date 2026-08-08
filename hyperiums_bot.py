@@ -57,6 +57,54 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 bot.remove_command("help")
 
 # ==============================================================================
+# DATA DICTIONARY
+# ==============================================================================
+
+# Civilization Level Investment Values
+CIV_LEVELS = {
+    1: 0.0,
+    2: 125000.00,
+    3: 281250.00,
+    4: 476562.50,
+    5: 720703.13,
+    6: 1025878.91,
+    7: 1407348.63,
+    8: 1884185.79,
+    9: 2480232.24,
+    10: 3225290.30,
+    11: 4156612.87,
+    12: 5320766.09,
+    13: 6775957.61,
+    14: 8594947.02,
+    15: 10868683.77,
+    16: 13710854.72,
+    17: 17263568.39,
+    18: 21704460.49,
+    19: 27255575.62,
+    20: 34194469.52,
+    21: 42868086.90,
+    22: 53710108.62,
+    23: 67262635.78,
+    24: 84203294.73,
+    25: 105379118.41,
+    26: 131848898.01,
+    27: 164936122.51,
+    28: 206295153.14,
+    29: 257993941.42,
+    30: 322617426.78,
+    31: 403396783.47,
+    32: 504370979.34,
+    33: 630588724.18,
+    34: 788360905.22,
+    35: 985576131.53,
+    36: 1232095164.41,
+    37: 1540243955.51,
+    38: 1925429944.39,
+    39: 2406912430.48,
+    40: 3008765538.11,
+}
+
+# ==============================================================================
 # HELPER: MIRC TAG PARSERS
 # ==============================================================================
 def clean_mirc_tags_for_discord(text: str) -> str:
@@ -229,6 +277,7 @@ async def help_command(ctx):
         "`!p [planet]` - Check planet stats (civ level, gov, race, coloured activity delta).\n"
         "`!ptop10` - Shows the top 10 planets in the game by activity.\n"
 	"`!slap [player/@user]` - Send a classic trout slap.\n"
+	"`!civ [x] [y]` - Shows the investment required to reach a specific civ level or to grow from one to the other. You can use a single value or two to calculate the difference.\n"
     )
     await ctx.send(help_text)
 
@@ -266,6 +315,43 @@ async def top10_planets(ctx):
 
     except Exception as e:
         await ctx.send(f"⚠️ Error fetching top 10 planets: {e}")
+
+@bot.command(name="civ")
+async def civ_calc(ctx, *args: int):
+    """Calculates investment cost for civ levels.
+
+    Usage:
+        !civ 28      -> Cost to reach Civ 28
+        !civ 10 15   -> Cost to go from Civ 10 to Civ 15
+    """
+    if not args or len(args) > 2:
+        await ctx.send("⚠️ Usage: `!civ <level>` or `!civ <start_level> <target_level>`")
+        return
+
+    # Check that inputs fall within valid 1-40 range
+    for level in args:
+        if level not in CIV_LEVELS:
+            await ctx.send("❌ Please enter a valid civ level between 1 and 40.")
+            return
+
+    # Case 1: Single Argument (!civ 28)
+    if len(args) == 1:
+        target = args[0]
+        val = CIV_LEVELS[target]
+        formatted_val = f"{val:,.2f}"
+        await ctx.send(f"You need to invest **{formatted_val}** to reach civ **{target}**.")
+
+    # Case 2: Two Arguments (!civ 10 15)
+    elif len(args) == 2:
+        start, end = args[0], args[1]
+        
+        if start >= end:
+            await ctx.send("⚠️ The starting civ level must be smaller than the target level.")
+            return
+
+        diff = CIV_LEVELS[end] - CIV_LEVELS[start]
+        formatted_diff = f"{diff:,.2f}"
+        await ctx.send(f"You need **{formatted_diff}** to move from civ **{start}** to civ **{end}**.")
 
 # ==============================================================================
 # BOT EVENTS & STARTUP
