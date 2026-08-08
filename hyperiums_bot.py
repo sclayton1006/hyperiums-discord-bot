@@ -151,6 +151,24 @@ def clean_mirc_tags_to_ansi(text: str) -> str:
     return text
 
 # ==============================================================================
+# HELP FILE
+# ==============================================================================
+
+@bot.command(name="help")
+async def help_command(ctx):
+    """Posts public help information in channel."""
+    help_text = (
+        "**🤖 Hyperiums Bot Commands**\n"
+        "-------------------------------------\n"
+	"`!slap [player/@user]` - Send a classic trout slap.\n"
+        "`!r [player1] [player2] [player3] ...` - Check player rank, influence, and daily coloured delta.\n"
+        "`!p [planet]` - Check planet stats (civ level, gov, race, coloured activity delta).\n"
+        "`!ptop10` - Shows the top 10 planets in the game by activity.\n"
+        "`!civ [x] [y]` - Shows the investment required to reach a specific civ level or to grow from one to the other. You can use a single value or two to calculate the difference.\n"
+    )
+    await ctx.send(help_text)
+
+# ==============================================================================
 # BOT COMMANDS
 # ==============================================================================
 @bot.command(name="r")
@@ -265,21 +283,6 @@ async def slap_user(ctx, target: typing.Union[discord.Member, str] = None):
         target_display = target.lstrip("@").strip()
 
     await ctx.send(f"*{ctx.author.display_name} slaps {target_display} around a bit with a large trout!* 🐟")
-
-
-@bot.command(name="help")
-async def help_command(ctx):
-    """Posts public help information in channel."""
-    help_text = (
-        "**🤖 Hyperiums Bot Commands**\n"
-        "-------------------------------------\n"
-        "`!r [player1] [player2] [player3] ...` - Check player rank, influence, and daily coloured delta.\n"
-        "`!p [planet]` - Check planet stats (civ level, gov, race, coloured activity delta).\n"
-        "`!ptop10` - Shows the top 10 planets in the game by activity.\n"
-	"`!slap [player/@user]` - Send a classic trout slap.\n"
-	"`!civ [x] [y]` - Shows the investment required to reach a specific civ level or to grow from one to the other. You can use a single value or two to calculate the difference.\n"
-    )
-    await ctx.send(help_text)
 
 @bot.command(name="ptop10")
 async def top10_planets(ctx):
