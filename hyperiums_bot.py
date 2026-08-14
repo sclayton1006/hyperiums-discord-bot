@@ -264,25 +264,52 @@ async def planet_check(ctx, *planets: str):
 
 
 @bot.command(name="slap")
-async def slap_user(ctx, target: typing.Union[discord.Member, str] = None):
+async def slap_user(ctx, *, target: str = None):
     """
-    Classic mIRC slap command. 
-    Tags the member if an @mention is used, otherwise uses plain text.
+    Classic mIRC slap command.
+    - Tags the member if @mentioned or matched case-insensitively.
+    - Rejects multi-word inputs containing spaces.
     
-    Usage: 
-      !slap Shamp    -> Plain text (no ping)
-      !slap @Shamp   -> Discord mention (pings user)
+    Usage:
+      !slap titiz     -> Tags @Titiz if they are in the server
+      !slap @Shamp    -> Tags @Shamp
+      !slap Unknown   -> Plain text slap if player is not in the server
     """
+    # 1. Check if an argument was provided
     if not target:
-        await ctx.send("Who do you want to slap? Usage: `!slap <name or @user>`")
+        await ctx.send("⚠️ Who do you want to slap? Usage: `!slap <name or @user>`")
         return
 
-    if isinstance(target, discord.Member):
-        target_display = target.mention
-    else:
-        target_display = target.lstrip("@").strip()
+    target_clean = target.strip()
 
-    await ctx.send(f"*{ctx.author.display_name} slaps {target_display} around a bit with a large trout!* 🐟")
+    # 2. Reject inputs that contain spaces
+    if " " in target_clean:
+        await ctx.send("❌ **Invalid name:** Player names cannot contain spaces. Please enter a valid single player name or @mention.")
+        return
+
+    # Strip any leading '@' if typed manually (e.g. '@titiz')
+    search_name = target_clean.lstrip("@").lower()
+
+    # 3. Check for Discord Mentions or Case-Insensitive Guild Member match
+    matched_member = None
+
+    # Check direct @mentions first
+    if ctx.message.mentions:
+        matched_member = ctx.message.mentions[0]
+    elif ctx.guild:
+        # Case-insensitive search against username, global display name, and server nickname
+        matched_member = discord.utils.find(
+            lambda m: m.name.lower() == search_name or m.display_name.lower() == search_name,
+            ctx.guild.members
+        )
+
+    # 4. Format output (tag if found, plain text if not)
+    if matched_member:
+        target_display = matched_member.mention
+    else:
+        target_display = discord.utils.escape_markdown(target_clean.lstrip("@"))
+
+    await ctx.send(f"*{ctx.author.display_name} slaps {target_display} around a bit with a large trout!* 🐟"
 
 @bot.command(name="ptop10")
 async def top10_planets(ctx):
