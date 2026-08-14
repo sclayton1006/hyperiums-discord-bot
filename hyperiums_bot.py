@@ -267,28 +267,36 @@ async def planet_check(ctx, *planets: str):
 async def slap_user(ctx, *, target: str = None):
     """
     Classic mIRC slap command.
+    - Strictly permits ONLY a single word/player name (blocks spaces, tabs, etc.).
     - Tags the member if @mentioned or matched case-insensitively.
-    - Rejects multi-word inputs containing spaces.
+    
+    Usage:
+      !slap titiz     -> Tags @Titiz if they are in the server
+      !slap @Shamp    -> Tags @Shamp
+      !slap Unknown   -> Plain text slap if player is not in the server
     """
+    # 1. Check if an argument was provided
     if not target:
         await ctx.send("⚠️ Who do you want to slap? Usage: `!slap <name or @user>`")
         return
 
     target_clean = target.strip()
 
-    # 1. Reject inputs with spaces
-    if " " in target_clean:
-        await ctx.send("❌ **Invalid name:** Player names cannot contain spaces. Please enter a valid single player name or @mention.")
+    # 2. Strict single-word check: Reject any whitespace (spaces, tabs, newlines)
+    # \s matches spaces, \t (tabs), \n, \r, and other unicode whitespace
+    if re.search(r'\s', target_clean) or len(target_clean.split()) > 1:
+        await ctx.send("❌ **Invalid name:** Player names must be a single word with no spaces, tabs, or extra text.")
         return
 
+    # Strip any leading '@' if typed manually (e.g. '@titiz')
     search_name = target_clean.lstrip("@").lower()
     matched_member = None
 
-    # 2. Check direct @mentions first
+    # 3. Check direct @mentions first
     if ctx.message.mentions:
         matched_member = ctx.message.mentions[0]
     elif ctx.guild:
-        # Check case-insensitively against username, server nickname, or global display name
+        # Case-insensitive check across username, server nickname, and global display name
         for member in ctx.guild.members:
             if (
                 member.name.lower() == search_name
@@ -298,14 +306,14 @@ async def slap_user(ctx, *, target: str = None):
                 matched_member = member
                 break
 
-    # 3. Format output
+    # 4. Format output
     if matched_member:
         target_display = matched_member.mention
     else:
         target_display = discord.utils.escape_markdown(target_clean.lstrip("@"))
 
     await ctx.send(f"*{ctx.author.display_name} slaps {target_display} around a bit with a large trout!* 🐟")
-
+	
 @bot.command(name="ptop10")
 async def top10_planets(ctx):
     """
