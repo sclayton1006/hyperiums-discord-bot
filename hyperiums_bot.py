@@ -161,9 +161,10 @@ async def help_command(ctx):
     help_text = (
         "**🤖 Hyperiums Bot Commands**\n"
         "-------------------------------------\n"
-	"`!slap [player/@user]` - Send a classic trout slap.\n"
+		"`!slap [player/@user]` - Send a classic trout slap.\n"
         "`!r [player1] [player2] [player3] ...` - Check player rank, influence, and daily coloured delta.\n"
         "`!p [planet]` - Check planet stats (civ level, gov, race, coloured activity delta).\n"
+		"`!d [planet1] [planet2]` - check the distance and flight time between two planets.\n"
         "`!ptop10` - Shows the top 10 planets in the game by activity.\n"
         "`!civ [x] [y]` - Shows the investment required to reach a specific civ level or to grow from one to the other. You can use a single value or two to calculate the difference.\n"
     )
