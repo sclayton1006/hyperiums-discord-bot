@@ -174,39 +174,47 @@ async def help_command(ctx):
 # BOT COMMANDS
 # ==============================================================================
 @bot.command(name="r")
-async def rank_check(ctx, *players: str):
+async def rank_check(ctx, *, raw_input: str = None):
     """
-    Queries hyp-legacy API for player rank stats.
-    Supports multi-player arguments: !r shamp fifi
+    Queries hyp-legacy API for live player rank stats.
+    Takes only the first word from the input and strips everything else.
+    
+    Usage:
+        !r Jacky (inactive ass)  -> Queries 'Jacky'
+        !r Jacky                 -> Queries 'Jacky'
     """
-    if not players:
-        await ctx.send("⚠️ Please specify at least one player name: !r <player1> [player2] ...")
+    if not raw_input:
+        await ctx.send("⚠️ Please specify a player name: `!r <playername>`")
         return
 
-    # Pass all captured player arguments into the URI
-    # Option A: Single request if passing as separate query args (e.g. arg1=shamp&arg2=fifi)
-    query_args = "&".join([f"arg{i+1}={urllib.parse.quote(p.strip())}" for i, p in enumerate(players)])
-    url = f"https://www.hyp-legacy.com/data/hypbot/get.php?command=rank&{query_args}&source={BOT_SOURCE_TAG}&game={GAME_NAME}"
+    # Extract ONLY the first full word and strip all surrounding whitespace
+    target_player = raw_input.strip().split()[0]
 
     try:
         session = requests.Session()
         session.mount('https://', LegacySSLAdapter())
         session.mount('http://', LegacySSLAdapter())
 
+        encoded_player = urllib.parse.quote(target_player)
+        url = (
+            f"https://www.hyp-legacy.com/data/hypbot/get.php"
+            f"?command=rank&arg1={encoded_player}&source={BOT_SOURCE_TAG}&game={GAME_NAME}"
+        )
+
         response = session.get(url, timeout=10, verify=False)
+
         if response.status_code != 200:
-            await ctx.send(f"❌ Error reaching hyp-legacy API (HTTP {response.status_code}).")
+            await ctx.send(f"❌ Error fetching {target_player} (HTTP {response.status_code}).")
             return
 
         raw_data = response.text.strip()
+
         if not raw_data or "not found" in raw_data.lower():
-            await ctx.send(f"❌ Player(s) not found.")
+            await ctx.send(f"❌ Player matching **{target_player}** was not found.")
             return
 
-        # Parse the raw multiline response into Discord ANSI formatting
+        # Clean mIRC tags to ANSI escape sequences
         formatted_msg = clean_mirc_tags_to_ansi(raw_data)
-        
-        # Output inside an ANSI code block wrapper
         await ctx.send(f"```ansi\n{formatted_msg}\n```")
 
     except Exception as e:
