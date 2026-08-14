@@ -386,6 +386,58 @@ async def civ_calc(ctx, *args: int):
         formatted_diff = f"{diff:,.2f}"
         await ctx.send(f"You need **{formatted_diff}** to move from civ **{start}** to civ **{end}**.")
 
+@bot.command(name="d", aliases=["distance"])
+async def calculate_distance(ctx, planet1: str = None, planet2: str = None):
+    """
+    Calculates the distance and flight time between two planets.
+    Usage:
+        !d planet1 planet2
+        !distance planet1 planet2
+    """
+    # 1. Validate that both planet names were supplied
+    if not planet1 or not planet2:
+        await ctx.send("⚠️ Please provide both planet names: `!d <planet1> <planet2>` or `!distance <planet1> <planet2>`")
+        return
+
+    # Clean and URL-encode inputs
+    p1_clean = urllib.parse.quote(planet1.strip())
+    p2_clean = urllib.parse.quote(planet2.strip())
+
+    # 2. Build the hyp-legacy API endpoint URL
+    url = (
+        f"https://www.hyp-legacy.com/data/hypbot/get.php"
+        f"?command=distance&arg1={p1_clean}&arg2={p2_clean}&source={BOT_SOURCE_TAG}&game={GAME_NAME}"
+    )
+
+    try:
+        session = requests.Session()
+        session.mount('https://', LegacySSLAdapter())
+        session.mount('http://', LegacySSLAdapter())
+
+        response = session.get(url, timeout=10, verify=False)
+
+        if response.status_code != 200:
+            await ctx.send(f"❌ Error reaching hyp-legacy API (HTTP {response.status_code}).")
+            return
+
+        raw_data = response.text.strip()
+
+        # Handle empty responses or errors from the API
+        if not raw_data:
+            await ctx.send("❌ No data returned from the API.")
+            return
+        
+        if "not found" in raw_data.lower() or "error" in raw_data.lower():
+            await ctx.send(f"❌ Could not calculate distance: {raw_data.replace('%MESSAGE%', '').strip()}")
+            return
+
+        # 3. Clean mIRC tags to ANSI escape sequences and post wrapped in ANSI block
+        formatted_msg = clean_mirc_tags_to_ansi(raw_data)
+        await ctx.send(f"```ansi\n{formatted_msg}\n```")
+
+    except Exception as e:
+        await ctx.send(f"⚠️ Error fetching distance data: {e}")
+
 # ==============================================================================
 # BOT EVENTS & STARTUP
 # ==============================================================================
