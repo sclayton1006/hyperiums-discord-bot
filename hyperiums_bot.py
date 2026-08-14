@@ -309,7 +309,7 @@ async def slap_user(ctx, *, target: str = None):
     else:
         target_display = discord.utils.escape_markdown(target_clean.lstrip("@"))
 
-    await ctx.send(f"*{ctx.author.display_name} slaps {target_display} around a bit with a large trout!* 🐟"
+    await ctx.send(f"*{ctx.author.display_name} slaps {target_display} around a bit with a large trout!* 🐟)"
 
 @bot.command(name="ptop10")
 async def top10_planets(ctx):
