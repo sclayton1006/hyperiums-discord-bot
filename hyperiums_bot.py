@@ -53,6 +53,7 @@ class LegacySSLAdapter(HTTPAdapter):
 # ==============================================================================
 intents = discord.Intents.default()
 intents.message_content = True  # Requires 'Message Content Intent' enabled in Discord Developer Portal
+intents.members = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 bot.remove_command("help")
 
@@ -262,48 +263,42 @@ async def planet_check(ctx, *planets: str):
     except Exception as e:
         await ctx.send(f"⚠️ Error fetching planet data: {e}")
 
-
 @bot.command(name="slap")
 async def slap_user(ctx, *, target: str = None):
     """
     Classic mIRC slap command.
     - Tags the member if @mentioned or matched case-insensitively.
     - Rejects multi-word inputs containing spaces.
-    
-    Usage:
-      !slap titiz     -> Tags @Titiz if they are in the server
-      !slap @Shamp    -> Tags @Shamp
-      !slap Unknown   -> Plain text slap if player is not in the server
     """
-    # 1. Check if an argument was provided
     if not target:
         await ctx.send("⚠️ Who do you want to slap? Usage: `!slap <name or @user>`")
         return
 
     target_clean = target.strip()
 
-    # 2. Reject inputs that contain spaces
+    # 1. Reject inputs with spaces
     if " " in target_clean:
         await ctx.send("❌ **Invalid name:** Player names cannot contain spaces. Please enter a valid single player name or @mention.")
         return
 
-    # Strip any leading '@' if typed manually (e.g. '@titiz')
     search_name = target_clean.lstrip("@").lower()
-
-    # 3. Check for Discord Mentions or Case-Insensitive Guild Member match
     matched_member = None
 
-    # Check direct @mentions first
+    # 2. Check direct @mentions first
     if ctx.message.mentions:
         matched_member = ctx.message.mentions[0]
     elif ctx.guild:
-        # Case-insensitive search against username, global display name, and server nickname
-        matched_member = discord.utils.find(
-            lambda m: m.name.lower() == search_name or m.display_name.lower() == search_name,
-            ctx.guild.members
-        )
+        # Check case-insensitively against username, server nickname, or global display name
+        for member in ctx.guild.members:
+            if (
+                member.name.lower() == search_name
+                or member.display_name.lower() == search_name
+                or (member.global_name and member.global_name.lower() == search_name)
+            ):
+                matched_member = member
+                break
 
-    # 4. Format output (tag if found, plain text if not)
+    # 3. Format output
     if matched_member:
         target_display = matched_member.mention
     else:
