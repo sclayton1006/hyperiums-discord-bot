@@ -456,8 +456,8 @@ async def alliance_check(ctx, *, raw_input: str = None):
     and returns formatted stats with ANSI coloring.
     
     Usage:
-        !a **Des
-        !alliance Nod
+        !a alliance1
+        !alliance alliance1
     """
     if not raw_input:
         await ctx.send("⚠️ Please specify an alliance name or tag: `!a <alliance_tag>`")
