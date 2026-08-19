@@ -165,6 +165,7 @@ async def help_command(ctx):
         "`!r [player1] [player2] [player3] ...` - Check player rank, influence, and daily coloured delta.\n"
         "`!p [planet]` - Check planet stats (civ level, gov, race, coloured activity delta).\n"
 		"`!d [planet1] [planet2]` - check the distance and flight time between two planets.\n"
+		"`!a [tag/name]` - Check alliance statistics (planets, gov types, activity delta).\n"
         "`!ptop10` - Shows the top 10 planets in the game by activity.\n"
         "`!civ [x] [y]` - Shows the investment required to reach a specific civ level or to grow from one to the other. You can use a single value or two to calculate the difference.\n"
     )
@@ -447,6 +448,60 @@ async def calculate_distance(ctx, planet1: str = None, planet2: str = None):
     except Exception as e:
         await ctx.send(f"⚠️ Error fetching distance data: {e}")
 
+@bot.command(name="a", aliases=["alliance"])
+async def alliance_check(ctx, *, raw_input: str = None):
+    """
+    Queries hyp-legacy API for alliance statistics.
+    Takes the alliance tag or name, strips surrounding whitespace,
+    and returns formatted stats with ANSI coloring.
+    
+    Usage:
+        !a **Des
+        !alliance Nod
+    """
+    if not raw_input:
+        await ctx.send("⚠️ Please specify an alliance name or tag: `!a <alliance_tag>`")
+        return
+
+    # Take the first argument / clean the input
+    alliance_tag = raw_input.strip().split()[0]
+    encoded_alliance = urllib.parse.quote(alliance_tag)
+
+    url = (
+        f"https://www.hyp-legacy.com/data/hypbot/get.php"
+        f"?command=a&arg1={encoded_alliance}&source={BOT_SOURCE_TAG}&game={GAME_NAME}"
+    )
+
+    try:
+        session = requests.Session()
+        session.mount('https://', LegacySSLAdapter())
+        session.mount('http://', LegacySSLAdapter())
+
+        response = session.get(url, timeout=10, verify=False)
+
+        if response.status_code != 200:
+            await ctx.send(f"❌ Error reaching hyp-legacy API (HTTP {response.status_code}).")
+            return
+
+        raw_data = response.text.strip()
+
+        if not raw_data:
+            await ctx.send("❌ No data returned from the API.")
+            return
+
+        # Check API-level error responses ("not found", "has not been seen")
+        lower_data = raw_data.lower()
+        if "not found in database" in lower_data or "has not been seen in game" in lower_data:
+            formatted_error = clean_mirc_tags_to_ansi(raw_data)
+            await ctx.send(f"```ansi\n{formatted_error}\n```")
+            return
+
+        # Clean tags and format into ANSI code block
+        formatted_msg = clean_mirc_tags_to_ansi(raw_data)
+        await ctx.send(f"```ansi\n{formatted_msg}\n```")
+
+    except Exception as e:
+        await ctx.send(f"⚠️ Error fetching alliance data: {e}")
 # ==============================================================================
 # BOT EVENTS & STARTUP
 # ==============================================================================
