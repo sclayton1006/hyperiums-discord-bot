@@ -167,6 +167,7 @@ async def help_command(ctx):
 		"`!d [planet1] [planet2]` - check the distance and flight time between two planets.\n"
 		"`!a [tag/name]` - Check alliance statistics (planets, gov types, activity delta).\n"
         "`!ptop10` - Shows the top 10 planets in the game by activity.\n"
+		"`!ptop10 detail` - Shows top 10 activity planets detail.\n"
         "`!civ [x] [y]` - Shows the investment required to reach a specific civ level or to grow from one to the other. You can use a single value or two to calculate the difference.\n"
     )
     await ctx.send(help_text)
@@ -502,6 +503,73 @@ async def alliance_check(ctx, *, raw_input: str = None):
 
     except Exception as e:
         await ctx.send(f"⚠️ Error fetching alliance data: {e}")
+
+@bot.command(name="ptop10")
+async def top10_planets(ctx, mode: str = None):
+    """
+    Fetches the top 10 activity planets.
+    If 'detail' is specified, it extracts each planet name and fetches
+    the full !p statistics for all 10 planets.
+    
+    Usage:
+        !ptop10
+        !ptop10 detail
+    """
+    url = (
+        f"https://www.hyp-legacy.com/data/hypbot/get.php"
+        f"?command=ptop10&source={BOT_SOURCE_TAG}&game={GAME_NAME}"
+    )
+
+    try:
+        session = requests.Session()
+        session.mount('https://', LegacySSLAdapter())
+        session.mount('http://', LegacySSLAdapter())
+
+        response = session.get(url, timeout=10, verify=False)
+
+        if response.status_code != 200:
+            await ctx.send(f"❌ Error reaching hyp-legacy API (HTTP {response.status_code}).")
+            return
+
+        raw_data = response.text.strip()
+
+        if not raw_data:
+            await ctx.send("❌ No data returned from the API.")
+            return
+
+        # 1. Standard summary view (!ptop10)
+        if not mode or mode.lower() != "detail":
+            formatted_msg = clean_mirc_tags_to_ansi(raw_data)
+            await ctx.send(f"```ansi\n{formatted_msg}\n```")
+            return
+
+        # 2. Detailed view (!ptop10 detail)
+        # Extract planet names: looks for lines matching '1. %bold%PlanetName ...'
+        planet_names = re.findall(r'^\d+\.\s*%bold%([^\s\[%]+)', raw_data, re.MULTILINE)
+
+        if not planet_names:
+            await ctx.send("⚠️ Could not parse planet names from the top 10 list.")
+            return
+
+        detailed_results = []
+        for p_name in planet_names:
+            encoded_planet = urllib.parse.quote(p_name.strip())
+            p_url = (
+                f"https://www.hyp-legacy.com/data/hypbot/get.php"
+                f"?command=planet&arg1={encoded_planet}&source={BOT_SOURCE_TAG}&game={GAME_NAME}"
+            )
+            p_res = session.get(p_url, timeout=10, verify=False)
+            if p_res.status_code == 200 and p_res.text.strip():
+                detailed_results.append(clean_mirc_tags_to_ansi(p_res.text.strip()))
+            else:
+                detailed_results.append(f"❌ Failed to fetch details for {p_name}")
+
+        combined_details = "\n".join(detailed_results)
+        await ctx.send(f"```ansi\n{combined_details}\n```")
+
+    except Exception as e:
+        await ctx.send(f"⚠️ Error fetching top 10 planets: {e}")
+
 # ==============================================================================
 # BOT EVENTS & STARTUP
 # ==============================================================================
