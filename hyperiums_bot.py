@@ -325,41 +325,6 @@ async def slap_user(ctx, *, target: str = None):
 
     await ctx.send(f"*{ctx.author.display_name} slaps {target_display} around a bit with a large trout!* 🐟")
 	
-@bot.command(name="ptop10")
-async def top10_planets(ctx):
-    """
-    Fetches the top 10 activity planets from the game.
-    Usage: !ptop10
-    """
-    url = (
-        f"https://www.hyp-legacy.com/data/hypbot/get.php"
-        f"?command=ptop10&source={BOT_SOURCE_TAG}&game={GAME_NAME}"
-    )
-
-    try:
-        session = requests.Session()
-        session.mount('https://', LegacySSLAdapter())
-        session.mount('http://', LegacySSLAdapter())
-
-        response = session.get(url, timeout=10, verify=False)
-
-        if response.status_code != 200:
-            await ctx.send(f"❌ Error reaching hyp-legacy API (HTTP {response.status_code}).")
-            return
-
-        raw_data = response.text.strip()
-
-        if not raw_data:
-            await ctx.send("❌ No data returned from the API.")
-            return
-
-        # Translate mIRC tags to ANSI colors and send in an ANSI block
-        formatted_msg = clean_mirc_tags_to_ansi(raw_data)
-        await ctx.send(f"```ansi\n{formatted_msg}\n```")
-
-    except Exception as e:
-        await ctx.send(f"⚠️ Error fetching top 10 planets: {e}")
-
 @bot.command(name="civ")
 async def civ_calc(ctx, *args: int):
     """Calculates investment cost for civ levels.
